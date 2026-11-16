@@ -1,14 +1,9 @@
 package ua.edu.nupp.kpp.server;
 
-/**
- * Розрахунок факторів та інтегрального показника.
- * I = 0,40·F1 + 0,35·F2 + 0,25·F3, усі фактори нормовані до 0–100.
- */
 public final class RiskCalculator {
 
     private RiskCalculator() { }
 
-    /** F1: площа ураження. 10 га і більше дають максимум (100). */
     public static double factor1(double affectedAreaHa) {
         if (affectedAreaHa < 0) {
             throw new IllegalArgumentException("Площа ураження не може бути від'ємною");
@@ -16,7 +11,6 @@ public final class RiskCalculator {
         return Math.min(100.0, affectedAreaHa * 10.0);
     }
 
-    /** F2: тяжкість порушення (рівень 1..5 -> 20..100). */
     public static double factor2(int severityLevel) {
         if (severityLevel < 1 || severityLevel > 5) {
             throw new IllegalArgumentException("Тяжкість порушення має бути від 1 до 5");
@@ -24,7 +18,6 @@ public final class RiskCalculator {
         return severityLevel * 20.0;
     }
 
-    /** F3: чутливість лісової ділянки (рівень 1..5 -> 20..100). */
     public static double factor3(int sensitivityLevel) {
         if (sensitivityLevel < 1 || sensitivityLevel > 5) {
             throw new IllegalArgumentException("Чутливість ділянки має бути від 1 до 5");

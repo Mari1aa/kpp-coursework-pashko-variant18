@@ -61,7 +61,6 @@ public class ViolationDAO {
         }
     }
 
-    /** Змінює лише стан. Допустимість переходу перевіряє Service. */
     public boolean updateState(long id, ViolationState state) throws SQLException {
         String sql = "UPDATE violation SET state = ? WHERE id = ?";
         try (Connection c = DBUtil.getConnection();

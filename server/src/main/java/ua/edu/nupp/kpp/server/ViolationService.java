@@ -12,7 +12,6 @@ public class ViolationService {
     private final ObservationDAO observationDAO = new ObservationDAO();
     private final ForestPlotDAO plotDAO = new ForestPlotDAO();
 
-    /** Створює порушення зі стану DETECTED; F1, F2, F3 та індекс рахує сервер. */
     public long add(long observationId, int severityLevel) throws SQLException {
         Violation v = build(null, observationId, severityLevel, ViolationState.DETECTED);
         try {
@@ -33,7 +32,6 @@ public class ViolationService {
         return dao.getById(id);
     }
 
-    /** Редагування: перераховує фактори, стан не змінюється. */
     public void update(long id, long observationId, int severityLevel) throws SQLException {
         Violation current = dao.getById(id);
         if (current == null) {
@@ -63,7 +61,6 @@ public class ViolationService {
         }
     }
 
-    /** Чотиристанний життєвий цикл: ВИЯВЛЕНО -> ПЕРЕВІРЕНО -> ЗАХІД_ЗАПЛАНОВАНО -> ЗАКРИТО. */
     public static boolean isAllowedTransition(ViolationState from, ViolationState to) {
         return (from == ViolationState.DETECTED && to == ViolationState.VERIFIED)
                 || (from == ViolationState.VERIFIED && to == ViolationState.ACTION_PLANNED)
