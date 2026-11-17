@@ -1,6 +1,7 @@
 package ua.edu.nupp.kpp.server;
 
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -55,6 +56,9 @@ public class ObservationService {
                 throw new IllegalArgumentException("Спостереження не знайдено");
             }
             LOG.info("Видалено спостереження id=" + id);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            LOG.warning("Видалення відхилено: є пов'язані записи, id=" + id);
+            throw new IllegalArgumentException("Неможливо видалити: є пов'язані записи");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Помилка видалення спостереження id=" + id, e);
             throw e;

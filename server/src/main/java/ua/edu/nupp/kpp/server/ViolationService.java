@@ -1,6 +1,7 @@
 package ua.edu.nupp.kpp.server;
 
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -55,6 +56,9 @@ public class ViolationService {
                 throw new IllegalArgumentException("Порушення не знайдено");
             }
             LOG.info("Видалено порушення id=" + id);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            LOG.warning("Видалення відхилено: є пов'язані записи, id=" + id);
+            throw new IllegalArgumentException("Неможливо видалити: є пов'язані записи");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Помилка видалення порушення id=" + id, e);
             throw e;

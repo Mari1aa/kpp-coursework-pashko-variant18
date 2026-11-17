@@ -1,6 +1,7 @@
 package ua.edu.nupp.kpp.server;
 
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -55,6 +56,9 @@ public class InspectionTaskService {
                 throw new IllegalArgumentException("Завдання інспекції не знайдено");
             }
             LOG.info("Видалено завдання інспекції id=" + id);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            LOG.warning("Видалення відхилено: є пов'язані записи, id=" + id);
+            throw new IllegalArgumentException("Неможливо видалити: є пов'язані записи");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Помилка видалення завдання id=" + id, e);
             throw e;

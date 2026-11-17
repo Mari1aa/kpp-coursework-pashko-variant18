@@ -1,6 +1,7 @@
 package ua.edu.nupp.kpp.server;
 
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -52,6 +53,9 @@ public class ForestPlotService {
                 throw new IllegalArgumentException("Лісову ділянку не знайдено");
             }
             LOG.info("Видалено лісову ділянку id=" + id);
+        } catch (SQLIntegrityConstraintViolationException e) {
+            LOG.warning("Видалення відхилено: є пов'язані записи, id=" + id);
+            throw new IllegalArgumentException("Неможливо видалити: є пов'язані записи");
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Помилка видалення лісової ділянки id=" + id, e);
             throw e;
