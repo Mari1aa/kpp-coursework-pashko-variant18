@@ -13,6 +13,14 @@ public final class DBUtil {
 
     private static final Properties PROPS = loadProperties();
 
+    static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Не знайдено JDBC-драйвер MySQL", e);
+        }
+    }
+
     private DBUtil() { }
 
     private static Properties loadProperties() {
