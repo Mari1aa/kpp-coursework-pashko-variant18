@@ -62,7 +62,7 @@ public class ForestPlotService {
         }
     }
 
-    private void validate(ForestPlot p) {
+    static void validate(ForestPlot p) {
         try {
             require(p.getCode(), "Код ділянки");
             require(p.getName(), "Назва ділянки");

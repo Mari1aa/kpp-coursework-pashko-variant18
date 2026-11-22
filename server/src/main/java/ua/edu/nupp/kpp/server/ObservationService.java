@@ -66,6 +66,19 @@ public class ObservationService {
     }
 
     private void validate(Observation o) throws SQLException {
+        validateFields(o);
+        try {
+            if (plotDAO.getById(o.getPlotId()) == null) {
+                throw new IllegalArgumentException("Лісову ділянку не знайдено");
+            }
+        } catch (IllegalArgumentException e) {
+            LOG.warning("Валідація спостереження не пройдена: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    /** Перевірка полів без звернення до бази даних (її можна тестувати окремо). */
+    static void validateFields(Observation o) {
         try {
             ForestPlotService.require(o.getObserver(), "Спостерігач");
             ForestPlotService.require(o.getCategory(), "Категорія");
@@ -80,9 +93,6 @@ public class ObservationService {
             }
             if (o.getDescription() != null && o.getDescription().length() > 500) {
                 throw new IllegalArgumentException("Опис задовгий (максимум 500 символів)");
-            }
-            if (plotDAO.getById(o.getPlotId()) == null) {
-                throw new IllegalArgumentException("Лісову ділянку не знайдено");
             }
         } catch (IllegalArgumentException e) {
             LOG.warning("Валідація спостереження не пройдена: " + e.getMessage());
