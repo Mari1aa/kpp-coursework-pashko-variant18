@@ -10,6 +10,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.Label;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.Tab;
@@ -24,11 +25,9 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class MainApp extends Application {
@@ -46,6 +45,10 @@ public class MainApp extends Application {
     private final TableView<Observation> observationTable = new TableView<>();
     private final TableView<Violation> violationTable = new TableView<>();
     private final TableView<InspectionTask> taskTable = new TableView<>();
+
+    private final ProgressBar importProgress = new ProgressBar(0);
+    private final Label importStatus = new Label("Імпорт не запускався");
+    private CsvImportTask currentImport;
 
     @Override
     public void start(Stage stage) {
@@ -141,6 +144,10 @@ public class MainApp extends Application {
         Button delete = new Button("Видалити");
         Button refresh = new Button("Оновити");
         Button importCsv = new Button("Імпортувати з CSV");
+        Button cancelImport = new Button("Скасувати імпорт");
+        cancelImport.setDisable(true);
+        importProgress.setMaxWidth(Double.MAX_VALUE);
+        importStatus.setWrapText(true);
 
         add.setOnAction(e -> run(() -> {
             api.addObservation(readObservation(null, plotId, date, observer, category, area, description));
@@ -156,7 +163,12 @@ public class MainApp extends Application {
             refreshAll();
         }));
         refresh.setOnAction(e -> run(this::refreshObservations));
-        importCsv.setOnAction(e -> run(this::importObservationsFromCsv));
+        importCsv.setOnAction(e -> startImport(importCsv, cancelImport));
+        cancelImport.setOnAction(e -> {
+            if (currentImport != null) {
+                currentImport.cancel();
+            }
+        });
 
         observationTable.getSelectionModel().selectedItemProperty().addListener((obs, old, o) -> {
             if (o != null) {
@@ -177,7 +189,9 @@ public class MainApp extends Application {
                 new Label("Площа ураження, га"), area,
                 new Label("Опис"), description,
                 new HBox(8, add, update, delete, refresh),
-                importCsv);
+                new HBox(8, importCsv, cancelImport),
+                importProgress,
+                importStatus);
         return layout(observationTable, form);
     }
 
@@ -321,32 +335,61 @@ public class MainApp extends Application {
                 description.getText(), date.getText(), done.isSelected());
     }
 
-    private void importObservationsFromCsv() throws IOException {
-        if (!Files.exists(CSV_PATH)) {
-            throw new IllegalArgumentException("Не знайдено файл " + CSV_PATH
-                    + ". Запустіть клієнт з каталогу client.");
+    private void startImport(Button importCsv, Button cancelImport) {
+        if (currentImport != null && currentImport.isRunning()) {
+            return;
         }
-        api.getObservations();
+        CsvImportTask task = new CsvImportTask(CSV_PATH, api);
+        currentImport = task;
 
-        CsvObservationReader.Result result = CsvObservationReader.read(CSV_PATH);
-        List<String> problems = new ArrayList<>(result.errors());
-        int imported = 0;
-        for (CsvObservationReader.Row row : result.rows()) {
-            try {
-                api.addObservation(row.observation());
-                imported++;
-            } catch (RuntimeException e) {
-                problems.add("Рядок " + row.line() + ": " + e.getMessage());
-            }
-        }
-        refreshAll();
+        importCsv.setDisable(true);
+        cancelImport.setDisable(false);
+        importProgress.progressProperty().bind(task.progressProperty());
+        importStatus.textProperty().bind(task.messageProperty());
 
-        StringBuilder text = new StringBuilder("Імпортовано записів: " + imported
-                + "\nПропущено рядків: " + problems.size());
-        problems.stream().limit(10).forEach(p -> text.append("\n").append(p));
+        task.setOnSucceeded(e -> {
+            finishImport(importCsv, cancelImport);
+            importStatus.setText("Готово. Імпортовано записів: " + task.getValue()
+                    + ", пропущено рядків: " + task.getSkipped());
+            run(this::refreshAll);
+            showImportResult("Імпорт завершено", task);
+        });
+        task.setOnFailed(e -> {
+            finishImport(importCsv, cancelImport);
+            Throwable error = task.getException();
+            LOG.log(Level.WARNING, "Імпорт CSV завершився помилкою", error);
+            String message = error == null || error.getMessage() == null
+                    ? "Невідома помилка" : error.getMessage();
+            importStatus.setText("Помилка імпорту: " + message);
+            run(this::refreshAll);
+            showError(message);
+        });
+        task.setOnCancelled(e -> {
+            finishImport(importCsv, cancelImport);
+            importStatus.setText("Імпорт скасовано; частина записів могла бути збережена");
+            run(this::refreshAll);
+        });
+
+        Thread thread = new Thread(task, "csv-import");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private void finishImport(Button importCsv, Button cancelImport) {
+        importProgress.progressProperty().unbind();
+        importStatus.textProperty().unbind();
+        importCsv.setDisable(false);
+        cancelImport.setDisable(true);
+    }
+
+    private void showImportResult(String title, CsvImportTask task) {
+        StringBuilder text = new StringBuilder("Імпортовано записів: " + task.getValue()
+                + "\nПропущено рядків: " + task.getSkipped());
+        task.getProblems().stream().limit(10).forEach(p -> text.append("\n").append(p));
         Alert info = new Alert(Alert.AlertType.INFORMATION, text.toString(), ButtonType.OK);
+        info.setTitle(title);
         info.setHeaderText("Результат імпорту CSV");
-        info.showAndWait();
+        info.show();
     }
 
     private void refreshAll() {

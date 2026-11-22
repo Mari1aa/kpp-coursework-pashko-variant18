@@ -145,7 +145,8 @@ public class HttpForestClient {
             Thread.currentThread().interrupt();
             throw new RuntimeException("Запит перервано", e);
         } catch (Exception e) {
-            throw new RuntimeException("Не вдалося з'єднатися із сервером. Перевірте, що Tomcat запущено.", e);
+            throw new ServerUnavailableException(
+                    "Не вдалося з'єднатися із сервером. Перевірте, що Tomcat запущено.", e);
         }
         if (response.statusCode() >= 400) {
             throw new RuntimeException(errorMessage(response.body()));
